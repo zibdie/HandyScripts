@@ -1,0 +1,57 @@
+name: Miniconda Environment
+
+on:
+  push:
+    - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONUNBUFFERED: 1
+      DEBIAN_FRONTEND: noninteractive
+      CONDA_ENVIRONMENT_FILE: environment.yml
+      CONDA_ENVIRONMENT_NAME: my_conda_environment
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Install Miniconda
+      run: |
+        apt-get update && apt-get install -y curl wget python3 python3-pip python3-venv
+        mkdir -p ~/miniconda3
+        wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda3/miniconda.sh
+        bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3
+        rm ~/miniconda3/miniconda.sh
+
+    - name: Create Conda Environment
+      run: |
+        echo "source ~/miniconda3/etc/profile.d/conda.sh" >> $GITHUB_PATH
+        source ~/miniconda3/etc/profile.d/conda.sh
+        conda env create --file {{ env.CONDA_ENVIRONMENT_FILE }}
+
+    - name: Run Python Script
+      working-directory: ${{ github.workspace }}
+      continue-on-error: true
+      run: |
+        source ~/miniconda3/etc/profile.d/conda.sh
+        conda activate {{ env.CONDA_ENVIRONMENT_NAME }}
+        python myscript.py
+
+    - name: [Optional] Delete Messy Files
+      run: |
+          find . -type d -name '.git' -exec rm -rf {} +
+          find . -type d -name '.github' -exec rm -rf {} +
+          find . -type d -name '.idea' -exec rm -rf {} +
+          find . -type d -name 'venv' -exec rm -rf {} +
+          find . -type d -name '__pycache__' -exec rm -rf {} +
+          sudo rm -rf ./{{ env.CONDA_ENVIRONMENT_FILE }}
+          find . -name '.DS_Store' -exec rm -rf {} +
+          find . -type d -name 'venv' -exec rm -rf {} +
+          find . -type d -name '.pytest_cache' -exec rm -rf {} +          
+    - uses: actions/upload-artifact@v4
+      with:
+        name: workspace-${{ github.sha }}
+        path: ${{ runner.temp }}/workspace-${{ github.sha }}.zip
+        retention-days: 7
