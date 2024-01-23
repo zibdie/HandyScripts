@@ -14,16 +14,15 @@ jobs:
     steps:
       - name: Checkout external repository
         uses: actions/checkout@v4
-        working-directory: ${{ github.workspace }}
         with:
+          path: ${{ github.workspace }}
           repository: ${{ secrets.EXTERNAL_REPOSITORY_URL }}
-           # If the repo is private, pass your credentials as secrets.
-           # Otherwise, comment out the 'username' and 'password' parameters
-
-           # If no secret is specified, it will use your GitHub username
-           username: ${{ secrets.EXTERNAL_USERNAME || github.actor }}
-           # If your external repository uses needs a login
-           password: ${{ secrets.EXTERNAL_ACCESS_TOKEN_OR_PASSWORD }}
+          # If the repo is private, pass your credentials as secrets.
+          # Otherwise, comment out the 'username' and 'password' parameters
+          # If no secret is specified, it will use your GitHub username
+          username: ${{ secrets.EXTERNAL_USERNAME || github.actor }}
+          # If your external repository uses needs a login
+          password: ${{ secrets.EXTERNAL_ACCESS_TOKEN_OR_PASSWORD }}
 
       - name: Run small fix
         working-directory: ${{ github.workspace }}
