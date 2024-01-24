@@ -1,0 +1,92 @@
+name: Docker Compilation Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  Compilation-Tests:
+    runs-on: ubuntu-latest
+    name: Compilation Tests
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: ${{ github.workspace }}
+
+      - name: Install Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
+
+      - name: Create required bind folders
+        working-directory: ${{ github.workspace }}
+        run: |
+          # Create all folders needed
+          mkdir -p react/node_modules
+          mkdir -p react/.next
+          mkdir -p django
+          
+      - name: Build containers with Docker Compose
+        working-directory: ${{ github.workspace }}
+        run: |
+          docker-compose build
+
+      - name: Test Docker Containers
+        working-directory: ${{ github.workspace }}
+        run: |
+          docker-compose up -d
+          echo "Sleeping for 120 seconds... After this, we will see which containers have exited unexpectedly."
+          sleep 120
+          echo "Sleep is over. Checking for exited containers..."
+          exited_containers=$(docker ps -a -f status=exited -q)
+          if [ "$exited_containers" ]; then
+            echo "One or more containers have failed. Details are as follows:"
+            docker ps -a -f status=exited
+            exit 1
+          else
+            echo "All containers seem to have started successfully."
+          fi
+
+      - name: Shutdown and remove all containers
+        run: |
+          docker-compose down
+          docker system prune -af --volumes
+
+      # [Optional Examples] Test Django Migrations As Example
+      - name: Build Django Stack from Docker Compose
+        working-directory: ${{ github.workspace }}
+        run: docker-compose build django
+
+      - name: Run Django
+        working-directory: ${{ github.workspace }}
+        run: docker-compose up -d django
+
+      - name: Test Django Migrations
+        run: |
+          echo "Sleeping for 30 seconds..."
+          sleep 30
+          echo "Sleep is over. Running migrations..."
+          docker-compose exec -T django python manage.py makemigrations
+          docker-compose exec -T django python manage.py migrate
+          exit_code=$(docker inspect django --format='{{.State.ExitCode}}')
+          if [ "$exit_code" != "0" ]; then exit $exit_code; fi
+
+      - name: Shutdown Django Stack
+        working-directory: ${{ github.workspace }}
+        run: |
+          docker-compose down
+          docker system prune -af --volumes
+
+      - name: Save logs from containers
+        working-directory: ${{ github.workspace }}
+        run: |
+          docker-compose logs > docker-logs.txt
+
+      - name: Upload Docker Compose logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: "docker-logs-${{ github.sha }}"
+          path: ${{ github.workspace }}/docker-logs.txt
+          retention-days: 7
+          if-no-files-found: 'error'
