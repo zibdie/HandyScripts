@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          path: ${{ github.workspace }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -33,11 +35,12 @@ jobs:
           password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
 
       - name: Build and push image to DockerHub
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v5
         with:
           # Choose more OS's if you wish but these are the most used
           platforms: linux/amd64,linux/arm64
           file: ${{ github.workspace }}/Dockerfile
+          context: ${{ github.workspace }}
           push: true
           tags: ${{ env.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY_NAME }}:latest
       
@@ -47,4 +50,4 @@ jobs:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_ACCESS_TOKEN }}
           repository: ${{ env.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY_NAME }}
-          readme-filepath: ./README.md
+          readme-filepath: ${{ github.workspace }}/README.md
