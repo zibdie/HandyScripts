@@ -1,0 +1,98 @@
+name: Update EC2 Security Group
+
+on:
+  #schedule:
+  #  - cron: "0 0 * * 0" # Runs at 00:00 every Sunday
+  workflow_dispatch:
+
+jobs:
+  Update-EC2-Security-Group-With-CloudFlare-IPs:
+    name: Dev - Update EC2 Security Group with CloudFlare IPs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install AWS CLI
+        run: |
+          # Check if AWS CLI is already installed
+          if ! command -v aws &> /dev/null; then
+              # Detect the architecture and set the URL accordingly
+              ARCH=$(uname -m)
+              AWS_CLI_URL="https://awscli.amazonaws.com/awscli-exe-linux-${ARCH}.zip"
+
+              # Echo the final URL
+              echo "Downloading AWS CLI from: $AWS_CLI_URL"
+
+              # Download and install AWS CLI
+              curl "$AWS_CLI_URL" -o "awscliv2.zip"
+              unzip awscliv2.zip
+              sudo ./aws/install
+          fi
+
+          # Verify installation
+          aws --version
+
+      - name: Configure AWS CLI
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ env.AWS_REGION || 'us-east-1' }}
+        run: |
+          # Configure AWS CLI with your credentials
+          aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+          aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+          aws configure set default.region $AWS_DEFAULT_REGION
+          if aws sts get-caller-identity; then
+              echo "AWS credentials are valid! Continuing..."
+          else
+              echo "AWS credentials are invalid or not set."
+              exit 1
+          fi
+      - name: Pull CloudFlare IP Ranges
+        run: |
+          curl https://www.cloudflare.com/ips-v4 -o ips-v4.txt
+          curl https://www.cloudflare.com/ips-v6 -o ips-v6.txt
+      - name: Update AWS Security Group
+        env:
+          SECURITY_GROUP_ID: ${{ secrets.AWS_SECURITY_GROUP_ID }}
+        run: |
+          # Fetching current ingress rules for ports 80 and 443
+          aws ec2 describe-security-groups --group-id $SECURITY_GROUP_ID --output json > current-sg-rules.json
+
+          echo "Revoking existing rules for port 80 and 443..."
+          # Revoke existing rules for port 80 and 443
+          # For IPv4
+          cat current-sg-rules.json | jq -r '.SecurityGroups[0].IpPermissions[] | select(.FromPort==80 and .ToPort==80) | .IpRanges[] | .CidrIp' | while read -r ip; do
+            echo "Revoking IPv4 $ip on port 80..."
+            aws ec2 revoke-security-group-ingress --group-id $SECURITY_GROUP_ID --protocol tcp --port 80 --cidr "$ip"
+          done
+          cat current-sg-rules.json | jq -r '.SecurityGroups[0].IpPermissions[] | select(.FromPort==443 and .ToPort==443) | .IpRanges[] | .CidrIp' | while read -r ip; do
+            echo "Revoking IPv4 $ip on port 443..."
+            aws ec2 revoke-security-group-ingress --group-id $SECURITY_GROUP_ID --protocol tcp --port 443 --cidr "$ip"
+          done
+          # For IPv6
+          cat current-sg-rules.json | jq -r '.SecurityGroups[0].IpPermissions[] | select(.FromPort==80 and .ToPort==80) | .Ipv6Ranges[] | .CidrIpv6' | while read -r ip; do
+            echo "Revoking IPv6 $ip on port 80..."
+            aws ec2 revoke-security-group-ingress --group-id $SECURITY_GROUP_ID --ip-permissions IpProtocol=tcp,FromPort=80,ToPort=80,Ipv6Ranges="[{CidrIpv6=$ip}]"
+          done
+          cat current-sg-rules.json | jq -r '.SecurityGroups[0].IpPermissions[] | select(.FromPort==443 and .ToPort==443) | .Ipv6Ranges[] | .CidrIpv6' | while read -r ip; do
+            echo "Revoking IPv6 $ip on port 443..."
+            aws ec2 revoke-security-group-ingress --group-id $SECURITY_GROUP_ID --ip-permissions IpProtocol=tcp,FromPort=443,ToPort=443,Ipv6Ranges="[{CidrIpv6=$ip}]"
+          done
+
+          echo "Adding new rules from Cloudflare IP ranges..."
+          # Adding new rules from Cloudflare IP ranges
+          # For IPv4
+          sort -u ips-v4.txt | while read -r ip; do
+            trimmed_ip=$(echo "$ip" | sed 's/[[:space:]]*$//')
+            echo "Adding IPv4 $trimmed_ip on port 80..."
+            aws ec2 authorize-security-group-ingress --group-id $SECURITY_GROUP_ID --protocol tcp --port 80 --cidr $trimmed_ip
+            echo "Adding IPv4 $trimmed_ip on port 443..."
+            aws ec2 authorize-security-group-ingress --group-id $SECURITY_GROUP_ID --protocol tcp --port 443 --cidr $trimmed_ip
+          done
+          # For IPv6
+          sort -u ips-v6.txt | while read -r ip; do
+            trimmed_ip=$(echo "$ip" | sed 's/[[:space:]]*$//')
+            echo "Adding IPv6 $trimmed_ip on port 80..."
+            aws ec2 authorize-security-group-ingress --group-id $SECURITY_GROUP_ID --ip-permissions IpProtocol=tcp,FromPort=80,ToPort=80,Ipv6Ranges="[{CidrIpv6=$trimmed_ip}]"
+            echo "Adding IPv6 $trimmed_ip on port 443..."
+            aws ec2 authorize-security-group-ingress --group-id $SECURITY_GROUP_ID --ip-permissions IpProtocol=tcp,FromPort=443,ToPort=443,Ipv6Ranges="[{CidrIpv6=$trimmed_ip}]"
+          done
