@@ -10,6 +10,10 @@ jobs:
     name: Dev - Update EC2 Security Group with CloudFlare IPs
     runs-on: ubuntu-latest
     steps:
+      - name: Install Packages
+        run: |
+          sudo apt-get update && sudo apt-get install -y curl wget zip unzip
+          
       - name: Install AWS CLI
         run: |
           # Check if AWS CLI is already installed
