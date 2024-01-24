@@ -65,5 +65,5 @@ jobs:
         name: workspace-${{ github.sha }}
         path: ${{ runner.temp }}/workspace-${{ github.sha }}.zip
         retention-days: 7
-        if-no-files-found: 'warn'
-        compression-level: 6
+        if-no-files-found: 'warn' #Default
+        compression-level: 6 #Default
