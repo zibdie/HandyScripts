@@ -1,8 +1,10 @@
+# Convert time to AoE [https://en.wikipedia.org/wiki/Anywhere_on_Earth] time 
+$aoeDate = (Get-Date).ToUniversalTime().AddHours(-12)
+$downloadDate = $aoeDate.ToString("yyyy-MM-dd")
+$downloadDateFormatted = $aoeDate.ToString("yyyy_MM_dd")
 $downloadPath = "C:\Program Files\ruffle\ruffle-download.zip"
 $extractionPath = "C:\Program Files\ruffle\ruffle-build"
-$today = Get-Date -Format "yyyy-MM-dd"
-$todayFormatted = Get-Date -Format "yyyy_MM_dd"
-$ruffleURL = "https://github.com/ruffle-rs/ruffle/releases/download/nightly-$today/ruffle-nightly-$todayFormatted-windows-x86_64.zip"
+$ruffleURL = "https://github.com/ruffle-rs/ruffle/releases/download/nightly-$downloadDate/ruffle-nightly-$downloadDateFormatted-windows-x86_64.zip"
 
 Function Ensure-Directory {
     param (
