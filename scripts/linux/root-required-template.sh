@@ -7,9 +7,14 @@
 
 # Write your root-required commands here. COMMANDS variable is multi-line
 COMMANDS="
+echo 'Updating package lists...'
 sudo apt-get update
+echo 'Upgrading installed packages...'
 sudo apt-get dist-upgrade -y
+echo 'Removing unnecessary packages...'
 sudo apt-get autoremove -y
+echo 'Refreshing Snap packages...'
+sudo snap refresh
 "
 
 is_in_sudo_group() {
