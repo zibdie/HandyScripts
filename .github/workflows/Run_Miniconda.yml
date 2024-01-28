@@ -59,6 +59,7 @@ jobs:
           find . -name '.DS_Store' -exec rm -rf {} +
           find . -type d -name 'venv' -exec rm -rf {} +
           find . -type d -name '.pytest_cache' -exec rm -rf {} +   
+          find . -type d -name '.DS_Store' -exec rm -rf {} + 
           zip -r ${{ runner.temp }}/workspace-${{ github.sha }}.zip .
     - uses: actions/upload-artifact@v4
       with:
