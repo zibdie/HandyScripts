@@ -11,8 +11,7 @@ sudo apt-get update
 sudo apt-get dist-upgrade -y
 sudo apt-get autoremove -y
 sudo apt-get install -y uidmap curl
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
+curl -fsSL https://get.docker.com | sudo sh
 dockerd-rootless-setuptool.sh install
 sudo groupadd docker
 sudo usermod -aG docker $USER
