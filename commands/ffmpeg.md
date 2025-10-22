@@ -18,7 +18,7 @@ ffmpeg -i input.mp4 -f lavfi -i "color=black" -filter_complex "[1:v][0:v]scale2r
 
 ### Fade In
 ```
-ffmpeg -i input.mp4 -vf "fade=t=in:st=0:d=2" -af "afade=t=in:st=0:d=2" output.mp4
+ffmpeg -i output2.mp4 -vf "fade=t=in:st=0:d=2" -af "afade=t=in:st=0:d=2" output3.mp4
 ```
 * `-i input.mp4` — your input video.
 * `-vf "fade=t=in:st=0:d=2"` — applies a fade-in effect:
