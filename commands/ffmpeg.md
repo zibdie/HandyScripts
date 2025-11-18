@@ -3,7 +3,7 @@
 
 ### Strip Metadata
 ```
-ffmpeg -i input.mkv -map_metadata -1 output.mp4
+ffmpeg -i input.mp4 -map_metadata -1 output.mp4
 ```
 
 ### Video Color Correction (MW2 2009)
